@@ -1,44 +1,35 @@
-# Python Playwright Web Crawler
+# CMoney 股票爬蟲
 
-一個結構清晰、適合教學的 Python + Playwright 股票資料爬蟲程式
+基於 Playwright 的 CMoney 股票資料爬蟲，採用清晰的多資料夾架構組織程式碼。
 
 ## 功能特色
 
-- ✅ **清楚的功能分離**：每個函式只負責一件事
+- ✅ **模組化設計**：配置、爬蟲、工具完全分離
 - ✅ **非同步架構**：使用 async/await 提升效能
 - ✅ **Response 監聽**：攔截 API Response 取得資料
-- ✅ **智慧日期處理**：自動跳過週末
-- ✅ **完整註解**：適合初學者學習
+- ✅ **自動跳過週末**：智慧日期處理
+- ✅ **非無頭模式**：可視化瀏覽器操作
+- ✅ **批次處理**：支援多股票同時抓取
 - ✅ **資料儲存**：自動儲存為 JSON 格式
 
-## 程式結構
+## 專案架構
 
 ```
-stock_crawler.py
-├── 1. 設定區 (Configuration Section)
-│   └── CrawlerConfig 類別：集中管理所有設定
-├── 2. 瀏覽器管理 (Browser Management)
-│   ├── initialize_browser()：初始化瀏覽器
-│   └── close_browser()：關閉瀏覽器
-├── 3. 頁面操作 (Page Operations)
-│   ├── navigate_to_page()：導航到頁面
-│   ├── switch_to_chart_view()：切換圖表檢視
-│   ├── set_stock_symbol()：設定股票代碼
-│   └── set_target_date()：設定日期
-├── 4. Response 監聽與資料收集 (Response Monitoring)
-│   └── ResponseCollector 類別：監聽並收集 API 資料
-├── 5. 日期處理工具 (Date Utilities)
-│   ├── parse_date()：解析日期
-│   ├── is_weekend()：判斷週末
-│   └── generate_date_range()：產生日期範圍（跳過週末）
-├── 6. 資料儲存 (Data Storage)
-│   ├── ensure_output_directory()：確保輸出目錄存在
-│   ├── save_to_json()：儲存 JSON 檔案
-│   └── save_daily_data()：儲存單日資料
-└── 7. 主流程控制 (Main Flow Control)
-    ├── crawl_stock_data_for_date()：爬取單一股票資料
-    ├── crawl_multiple_stocks()：爬取多支股票資料
-    └── main()：主程式進入點
+.
+├── src/
+│   ├── config/              # 配置模組
+│   │   ├── __init__.py
+│   │   └── settings.py      # 爬蟲配置設定
+│   ├── crawlers/            # 爬蟲模組
+│   │   ├── __init__.py
+│   │   └── cmoney_crawler.py  # CMoney 爬蟲核心類別
+│   ├── utils/               # 工具模組
+│   │   ├── __init__.py
+│   │   └── date_utils.py    # 日期處理工具
+│   └── __init__.py
+├── data/                    # 資料儲存目錄
+├── main.py                  # 主程式入口
+└── requirements.txt         # 相依套件
 ```
 
 ## 安裝步驟
@@ -57,104 +48,172 @@ playwright install chromium
 
 ### 基本使用
 
-直接執行程式：
+2. **安裝 Playwright 瀏覽器**：
 ```bash
-python stock_crawler.py
+playwright install chromium
 ```
 
-### 自訂設定
+## 使用方法
 
-修改 `stock_crawler.py` 中的 `CrawlerConfig` 類別：
+### 設定配置
+
+編輯 [src/config/settings.py](src/config/settings.py) 修改配置：
 
 ```python
-class CrawlerConfig:
-    # 修改股票代碼
-    STOCK_SYMBOLS = ["2330", "2317", "2454"]
-    
-    # 修改日期範圍
-    START_DATE = "2024-01-01"
-    END_DATE = "2024-01-10"
-    
-    # 修改目標網站
-    BASE_URL = "https://www.example-stock.com/chart"
-    
-    # 修改選擇器
-    SELECTORS = {
-        "stock_input": "#stock-symbol",
-        "date_input": "#date-picker",
-        "chart_tab": "#chart-tab",
-        "submit_button": "#submit-btn"
+class CrawlerSettings:
+    # 要抓取的股票
+    STOCKS = {
+        "萬海": "2615",
+        "台積電": "2330",
+        # 新增更多股票...
     }
+    
+    # 日期範圍
+    START_DATE = datetime(2025, 11, 1)
+    END_DATE = datetime(2025, 11, 28)
+    
+    # 等待時間 (秒)
+    WAIT_AFTER_INPUT = 5
 ```
+
+### 執行程式
+
+直接執行主程式：
+```bash
+python main.py
+```
+
+程式會自動：
+1. 開啟瀏覽器（非無頭模式）
+2. 依序抓取設定的股票資料
+3. 自動跳過週末日期
+4. 將資料儲存為 JSON 格式
 
 ## 輸出結果
 
-資料會儲存在 `data/` 目錄下，每個日期一個 JSON 檔案：
-
+資料會儲存在以下格式的目錄中：
 ```
-data/
-├── stock_data_2024-01-01.json
-├── stock_data_2024-01-02.json
-└── stock_data_2024-01-03.json
+data_股票名稱_股票代碼/
+  └── 股票代碼_日期.json
 ```
 
-每個 JSON 檔案格式：
-```json
-{
-  "date": "2024-01-01",
-  "crawled_at": "2024-01-01T10:30:00.123456",
-  "total_records": 3,
-  "data": {
-    "2330": [...],
-    "2317": [...],
-    "2454": [...]
-  }
-}
+例如：
 ```
+data_萬海_2615/
+  ├── 2615_20251101.json
+  ├── 2615_20251104.json
+  ├── 2615_20251105.json
+  └── ...
+```
+
+每個 JSON 檔案包含該日期的完整股票資料。
+
+## 模組說明
+
+### 1. 配置模組 (src/config/)
+- **settings.py**：集中管理所有配置參數
+  - 股票清單
+  - 日期範圍
+  - URL 和選擇器
+  - 超時設定
+
+### 2. 爬蟲模組 (src/crawlers/)
+- **cmoney_crawler.py**：CMoney 爬蟲核心類別
+  - `capture_stock()`：抓取單一股票資料
+  - `_handle_response()`：處理網路回應
+  - `_process_date()`：處理單一日期
+  - `_save_data()`：儲存資料
+
+### 3. 工具模組 (src/utils/)
+- **date_utils.py**：日期處理工具
+  - `is_weekend()`：判斷是否為週末
+  - `generate_date_range()`：產生日期範圍
 
 ## 程式設計特點
 
-### 1. 功能分離
-每個函式都有單一職責，易於理解和維護。
-
-### 2. Response 監聽
-使用 Playwright 的 `page.on("response")` 監聽 API 回應：
+### 🎯 清晰的類別設計
 ```python
-page.on("response", self._handle_response)
+class CMoneyCrawler:
+    """CMoney 股票資料爬蟲"""
+    
+    async def capture_stock(self, name: str, stock_id: str):
+        """抓取單一股票資料"""
 ```
 
-### 3. 週末跳過
-自動判斷並跳過週六、週日：
+### 🎯 Response 監聽機制
+自動攔截並儲存 API 回應：
 ```python
-def is_weekend(date: datetime) -> bool:
-    return date.weekday() >= 5  # 5=Saturday, 6=Sunday
+self.page.on("response", lambda response: asyncio.create_task(
+    self._handle_response(response, api_pattern)
+))
 ```
 
-### 4. 非同步架構
-全程使用 async/await 提升效能：
+### 🎯 智慧日期處理
+自動跳過週末：
 ```python
-async def main():
-    browser, page = await initialize_browser()
-    await navigate_to_page(page, url)
-    # ...
+for date in generate_date_range(START_DATE, END_DATE):
+    if is_weekend(date):
+        continue
 ```
 
-## 學習重點
+### 🎯 模組化架構
+- 配置與邏輯分離
+- 易於維護和擴充
+- 可重複使用的工具函式
 
-適合學習以下概念：
-- 🎯 Python 非同步程式設計 (async/await)
-- 🎯 Playwright 網頁自動化
-- 🎯 API Response 攔截與監聽
-- 🎯 日期處理與迴圈控制
-- 🎯 JSON 資料儲存
-- 🎯 程式碼組織與結構設計
+## 自訂設定範例
+
+### 新增更多股票
+編輯 [src/config/settings.py](src/config/settings.py)：
+```python
+STOCKS = {
+    "台積電": "2330",
+    "聯發科": "2454",
+    "鴻海": "2317",
+    "萬海": "2615",
+}
+```
+
+### 調整日期範圍
+```python
+START_DATE = datetime(2025, 1, 1)
+END_DATE = datetime(2025, 12, 31)
+```
+
+### 修改等待時間
+如果網路較慢，可增加等待時間：
+```python
+WAIT_AFTER_INPUT = 8  # 增加到 8 秒
+```
 
 ## 注意事項
 
-1. 請將 `BASE_URL` 和 `SELECTORS` 修改為實際目標網站的設定
-2. 程式預設以非無頭模式執行（可看到瀏覽器），方便觀察過程
-3. 若要在背景執行，請將 `headless=False` 改為 `headless=True`
-4. 請遵守目標網站的使用條款和爬蟲規範
+1. ⚠️ 程式使用非無頭模式，會顯示瀏覽器視窗
+2. ⚠️ 請確保網路連線穩定
+3. ⚠️ 抓取大量資料時請注意對方伺服器負載
+4. ⚠️ 請遵守 CMoney 網站使用條款
+5. ⚠️ 週末不會有股市交易資料
+
+## 常見問題
+
+### Q: 如何改為無頭模式？
+A: 在 [src/config/settings.py](src/config/settings.py) 中修改：
+```python
+HEADLESS = True
+```
+
+### Q: 程式執行很慢怎麼辦？
+A: 減少等待時間：
+```python
+WAIT_AFTER_INPUT = 3
+```
+
+### Q: 如何只抓取特定日期？
+A: 設定相同的開始和結束日期：
+```python
+START_DATE = datetime(2025, 11, 5)
+END_DATE = datetime(2025, 11, 5)
+```
 
 ## 授權
 
