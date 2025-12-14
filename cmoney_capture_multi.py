@@ -5,15 +5,13 @@ from playwright.async_api import async_playwright
 
 # === 要抓的股票 ===
 STOCKS = {
-   
     "萬海": "2615",
-
 }
-
 
 SEL = 'time#instantTimePicker input[name="utctime"]'
 START_DATE = datetime(2025, 11, 1)
 END_DATE   = datetime(2025, 11, 28)
+REQUEST_WAIT_TIME = 5  # seconds to wait for API response
 
 async def capture_stock(page, name, sid):
     URL = f"https://www.cmoney.tw/finance/{sid}/f00025"
@@ -73,7 +71,7 @@ async def capture_stock(page, name, sid):
             el.dispatchEvent(new Event('change', {{ bubbles: true }}));
         """)
 
-        await asyncio.sleep(5)
+        await asyncio.sleep(REQUEST_WAIT_TIME)
 
         if date_key in daily_content:
             filename = f"{save_dir}/{sid}_{date_key}.json"
@@ -82,7 +80,7 @@ async def capture_stock(page, name, sid):
                 parsed = json.loads(content)
                 with open(filename, "w", encoding="utf-8") as f:
                     json.dump(parsed, f, ensure_ascii=False, indent=2)
-            except Exception:
+            except json.JSONDecodeError:
                 with open(filename, "w", encoding="utf-8") as f:
                     f.write(content)
             print(f"💾 {filename} 已儲存")
