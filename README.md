@@ -194,27 +194,3 @@ WAIT_AFTER_INPUT = 8  # 增加到 8 秒
 4. ⚠️ 請遵守 CMoney 網站使用條款
 5. ⚠️ 週末不會有股市交易資料
 
-## 常見問題
-
-### Q: 如何改為無頭模式？
-A: 在 [src/config/settings.py](src/config/settings.py) 中修改：
-```python
-HEADLESS = True
-```
-
-### Q: 程式執行很慢怎麼辦？
-A: 減少等待時間：
-```python
-WAIT_AFTER_INPUT = 3
-```
-
-### Q: 如何只抓取特定日期？
-A: 設定相同的開始和結束日期：
-```python
-START_DATE = datetime(2025, 11, 5)
-END_DATE = datetime(2025, 11, 5)
-```
-
-## 授權
-
-MIT License
