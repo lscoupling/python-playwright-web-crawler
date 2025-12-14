@@ -50,12 +50,12 @@ class CrawlerConfig:
 # 2. 瀏覽器管理 (Browser Management)
 # ============================================================================
 
-async def initialize_browser() -> tuple[Browser, Page]:
+async def initialize_browser() -> tuple[Any, Browser, Page]:
     """
     初始化瀏覽器與頁面
     
     Returns:
-        tuple: (browser, page) 瀏覽器與頁面物件
+        tuple: (playwright, browser, page) Playwright 實例、瀏覽器與頁面物件
     """
     print("🚀 正在啟動瀏覽器...")
     
@@ -72,18 +72,20 @@ async def initialize_browser() -> tuple[Browser, Page]:
     await page.set_viewport_size({"width": 1920, "height": 1080})
     
     print("✅ 瀏覽器啟動完成")
-    return browser, page
+    return playwright, browser, page
 
 
-async def close_browser(browser: Browser) -> None:
+async def close_browser(playwright: Any, browser: Browser) -> None:
     """
-    關閉瀏覽器
+    關閉瀏覽器與 Playwright
     
     Args:
+        playwright: Playwright 實例
         browser: 要關閉的瀏覽器物件
     """
     print("🔒 正在關閉瀏覽器...")
     await browser.close()
+    await playwright.stop()
     print("✅ 瀏覽器已關閉")
 
 
@@ -173,6 +175,7 @@ class ResponseCollector:
     def __init__(self):
         self.collected_data: List[Dict[str, Any]] = []
         self.is_collecting: bool = False
+        self._handler = None  # 儲存 handler 參考以便後續移除
     
     async def start_monitoring(self, page: Page) -> None:
         """
@@ -184,8 +187,12 @@ class ResponseCollector:
         print("👂 開始監聽 API Response...")
         self.is_collecting = True
         
+        # 儲存 handler 參考
+        self._handler = self._handle_response
+        self._page = page
+        
         # 註冊 response 事件處理器
-        page.on("response", self._handle_response)
+        page.on("response", self._handler)
     
     async def _handle_response(self, response: Response) -> None:
         """
@@ -197,8 +204,10 @@ class ResponseCollector:
         if not self.is_collecting:
             return
         
-        # 檢查是否為目標 API
-        if CrawlerConfig.API_ENDPOINT_PATTERN.replace("**", "") in response.url:
+        # 檢查是否為目標 API（簡單的字串包含檢查）
+        # 將 ** 通配符替換為空，進行基本的路徑匹配
+        pattern = CrawlerConfig.API_ENDPOINT_PATTERN.replace("**/", "").replace("/**", "")
+        if pattern in response.url:
             print(f"🎯 攔截到目標 API: {response.url}")
             
             try:
@@ -215,8 +224,16 @@ class ResponseCollector:
                 print(f"❌ 資料解析失敗: {e}")
     
     def stop_monitoring(self) -> None:
-        """停止監聽"""
+        """停止監聽並移除事件處理器"""
         self.is_collecting = False
+        
+        # 移除事件處理器以避免記憶體洩漏
+        if self._handler and hasattr(self, '_page'):
+            try:
+                self._page.remove_listener("response", self._handler)
+            except Exception:
+                pass  # 如果頁面已關閉，忽略錯誤
+        
         print("🛑 停止監聽 API Response")
     
     def get_collected_data(self) -> List[Dict[str, Any]]:
@@ -455,11 +472,12 @@ async def main():
     print("🚀 股票資料爬蟲程式啟動")
     print("="*60)
     
+    playwright = None
     browser = None
     
     try:
         # 步驟 1: 初始化瀏覽器
-        browser, page = await initialize_browser()
+        playwright, browser, page = await initialize_browser()
         
         # 步驟 2: 建立 Response 收集器
         collector = ResponseCollector()
@@ -503,8 +521,8 @@ async def main():
         
     finally:
         # 步驟 8: 清理資源
-        if browser:
-            await close_browser(browser)
+        if browser and playwright:
+            await close_browser(playwright, browser)
 
 
 # ============================================================================
